@@ -1,0 +1,8 @@
+#pip editable installs
+
+*.egg-info/
+
+
+#pycache
+
+*.pyc
