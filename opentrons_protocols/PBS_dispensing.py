@@ -1,7 +1,7 @@
 from opentrons import protocol_api
-
-
+from opentrons_tools import *
 import math
+
 # metadata
 metadata = {
     'protocolName': 'PBS_dispensing',
@@ -61,14 +61,14 @@ DISTRIBUTE_WELL_KEY = 'distribute_wells'
 
 # Dict labwares-> habría que pasarlo a clases
 
-EPPENDORF_LABWARE = {
+eppendorf_labware = {
     LABWARE_NAME : 'opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap',
     LABWARE_SLOTS : ['10', '7', '4', '1', '11', '8', '5', '2'],
     LABWARE_LABEL : "Opentrons Rack de tubos eppendorf de 2 mL",
     LABWARE_TYPE : TUBERACK_TYPE,
     TUBE_COUNT : 24
 }
-FALCON_LABWARE = {
+falcon_labware = {
     LABWARE_NAME : 'opentrons_6_tuberack_falcon_50ml_conical',
     LABWARE_SLOTS : ['6'],
     LABWARE_LABEL : 'Opentrons Rack de tubos falcon 50 mL' ,
@@ -76,7 +76,7 @@ FALCON_LABWARE = {
     TUBE_COUNT : 6
 }
 
-P1000_PIPETTE = {
+p1000_pipette = {
     PIPETTE_LABWARE_NAME_KEY :'p1000_single_gen2',
     PIPETTE_POSITION_KEY : RIGHT_POSITION,
     PIPETTE_LABEL_KEY : 'Opentrons P1000 single gen2',
@@ -85,109 +85,49 @@ P1000_PIPETTE = {
     TIP_RACK_LABEL_KEY : '1000µl tiprack'
 }
 
-#Funciones
-
-def distribute_vol_and_offsets(number_of_tubes, tubes_slot_list, source_slot_list, offset_iterates, 
-max_tube_by_rack, max_source_tube_by_rack, max_tubes_fill_by_iter, tube_key_preffix = 'tube_',
-tube_rack_slot_key = 'rack_tube_slot', tube_well_key = 'tube_well', falcon_tube_rack_slot_key = 'falcon_rack_slot',
-falcon_well_key = 'falcon_well', offset_key = 'offset'):
-    #Set variables
-    dist_dict={}
-    epp_rack_idx = 0
-    tube_well_idx = 0
-    falcon_rack_idx = 0
-    falcon_well_idx = 0
-    offset_idx = 0
-    tubes_fill_in_iter = 0
-    #iter by tubes
-    for tube in range(number_of_tubes):
-        tube_key = tube_key_preffix + str(tube)
-        dist_dict[tube_key] = {}
-        #set tubes rack and well
-        dist_dict[tube_key][tube_rack_slot_key] = tubes_slot_list[epp_rack_idx]
-        dist_dict[tube_key][tube_well_key] = tube_well_idx
-        tube_well_idx +=1
-        # control dest parameters
-        if tube_well_idx >= max_tube_by_rack:
-            epp_rack_idx +=1
-            tube_well_idx = 0
-        # set source well, rack and offset 
-        dist_dict[tube_key][falcon_tube_rack_slot_key] = source_slot_list[falcon_rack_idx]
-        dist_dict[tube_key][falcon_well_key] = falcon_well_idx
-        dist_dict[tube_key][offset_key] = offset_iterates[offset_idx]
-        tubes_fill_in_iter +=1
-        #control source parameters
-        if tubes_fill_in_iter >= max_tubes_fill_by_iter:
-            offset_idx +=1
-            tubes_fill_in_iter = 0
-            if offset_idx >=len(offset_iterates):
-                falcon_well_idx +=1
-                offset_idx = 0
-                if falcon_well_idx >= max_source_tube_by_rack:
-                    falcon_rack_idx +=1
-                    falcon_well_idx = 0
-    return(dist_dict)
-
-def reorder_distribute_dict(distribute_dict, labware_dict, falcon_rack_slot = 'falcon_rack_slot',
-    falcon_well = 'falcon_well', offset = 'offset', rack_slot_key='rack_tube_slot', tube_well_key = 'tube_well', 
-    distribute_well_key = 'distribute_well', pk_sep = "-" , bottom_distance = 5):
-        
-    new_key_builder = [falcon_rack_slot, falcon_well, offset]
-    reorder_dict = {} 
-    for dict in distribute_dict.values():
-        pklist = [str(dict[key]) for key in dict.keys() if key in new_key_builder]
-        pk = pk_sep.join(pklist)
-        order = labware_dict[dict[rack_slot_key]].wells()[dict[tube_well_key]].bottom(bottom_distance)
-        if pk not in reorder_dict.keys():
-            reorder_dict[pk] = {key: value for key, value in dict.items() if key in new_key_builder}
-            reorder_dict[pk][distribute_well_key] = [order]
-        else:
-            reorder_dict[pk][distribute_well_key].append(order)
-    return(reorder_dict)
-
 #Calculo de variables
-EPPENDORF_RACKS_NEEDED = math.ceil(NUMBER_OF_TUBES/EPPENDORF_LABWARE[TUBE_COUNT])
-VOLUME_ML_PBS_NEEDED = DISP_VOLUME_ML * NUMBER_OF_TUBES
-FALCON_TUBES_NEEDED = math.ceil((VOLUME_ML_PBS_NEEDED + VOLUME_ML_PBS_NEEDED * PBS_LOST_PERCENT)/FALCON_VOLUME_ML)
-FALCON_RACKS_NEEDED = math.ceil(FALCON_TUBES_NEEDED/FALCON_LABWARE[TUBE_COUNT])
-EPPEDORF_FILL_FOR_FALCON = math.floor(FALCON_VOLUME_ML / (DISP_VOLUME_ML + DISP_VOLUME_ML * PBS_LOST_PERCENT))
-RACKS_FILL_FOR_FALCON = math.floor(EPPEDORF_FILL_FOR_FALCON / EPPENDORF_LABWARE[TUBE_COUNT]) # Vamos a RACKS completos
-EPPENDORFS_FILL_BY_OFFSET_ITERATE = math.floor(RACKS_FILL_FOR_FALCON * EPPENDORF_LABWARE[TUBE_COUNT] / len(OFFSET_ITERATES))
-RACKS_FILL_BY_ITERATE = math.floor(EPPENDORFS_FILL_BY_OFFSET_ITERATE/EPPENDORF_LABWARE[TUBE_COUNT])
-EPPENDORFS_IN_LAST_ITER = RACKS_FILL_FOR_FALCON * EPPENDORF_LABWARE[TUBE_COUNT] - EPPENDORFS_FILL_BY_OFFSET_ITERATE * (len(OFFSET_ITERATES)- 1)
+eppendorfs_racks_needed = math.ceil(NUMBER_OF_TUBES/eppendorf_labware[TUBE_COUNT])
+volume_ml_pbs_needed = DISP_VOLUME_ML * NUMBER_OF_TUBES
+falcon_tubes_needed = math.ceil((volume_ml_pbs_needed + volume_ml_pbs_needed * PBS_LOST_PERCENT)/FALCON_VOLUME_ML)
+falcons_racks_needed = math.ceil(falcon_tubes_needed/falcon_labware[TUBE_COUNT])
+eppendorfs_fill_falcon = math.floor(FALCON_VOLUME_ML / (DISP_VOLUME_ML + DISP_VOLUME_ML * PBS_LOST_PERCENT))
+racks_fill_falcon = math.floor(eppendorfs_fill_falcon / eppendorf_labware[TUBE_COUNT]) # Vamos a RACKS completos
+eppendors_fill_offset_iter = math.floor(racks_fill_falcon * eppendorf_labware[TUBE_COUNT] / len(OFFSET_ITERATES))
+racks_fill_iter = math.floor(eppendors_fill_offset_iter/eppendorf_labware[TUBE_COUNT])
+eppendorf_fill_last_iter = racks_fill_falcon * eppendorf_labware[TUBE_COUNT] - eppendors_fill_offset_iter * (len(OFFSET_ITERATES)- 1)
 
 #Calculamos la iteración de pipeteo
-distribute_dict = distribute_vol_and_offsets(NUMBER_OF_TUBES, EPPENDORF_LABWARE[LABWARE_SLOTS], FALCON_LABWARE[LABWARE_SLOTS],
-OFFSET_ITERATES,EPPENDORF_LABWARE[TUBE_COUNT],FALCON_LABWARE[TUBE_COUNT], EPPENDORFS_FILL_BY_OFFSET_ITERATE, tube_rack_slot_key=DEST_LBW_SLOT_KEY,
+distribute_dict = distribute_vol_and_offsets(NUMBER_OF_TUBES, eppendorf_labware[LABWARE_SLOTS], falcon_labware[LABWARE_SLOTS],
+OFFSET_ITERATES,eppendorf_labware[TUBE_COUNT],falcon_labware[TUBE_COUNT], eppendors_fill_offset_iter, tube_rack_slot_key=DEST_LBW_SLOT_KEY,
 tube_well_key=DEST_LBW_WELL_KEY, falcon_tube_rack_slot_key=SRC_LBW_SLOT_KEY, falcon_well_key=SRC_LBW_WELL_KEY, offset_key=OFFSET_KEY)
 
 def run(ctx: protocol_api.ProtocolContext):
-    if EPPENDORF_RACKS_NEEDED > MAX_EPPENDORF_RACK_ADMIT or FALCON_RACKS_NEEDED > MAX_FALCON_RACK_ADMIT: 
+    if eppendorfs_racks_needed > MAX_EPPENDORF_RACK_ADMIT or falcons_racks_needed > MAX_FALCON_RACK_ADMIT: 
         ctx.comment('El número de eppendorf o de tubos falcon excede el permitido')
         exit()
     else:
-        EPPENDORF_LABWARE[LABWARE_SLOTS] = [EPPENDORF_LABWARE[LABWARE_SLOTS][idx] for idx in range(EPPENDORF_RACKS_NEEDED)]
+        eppendorf_labware[LABWARE_SLOTS] = [eppendorf_labware[LABWARE_SLOTS][idx] for idx in range(eppendorfs_racks_needed)]
     # load labware
     source_rack = {str(slot) : ctx.load_labware(
-        FALCON_LABWARE[LABWARE_NAME], slot,
-        FALCON_LABWARE[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot)) 
-        for slot in FALCON_LABWARE[LABWARE_SLOTS]
+        falcon_labware[LABWARE_NAME], slot,
+        falcon_labware[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot)) 
+        for slot in falcon_labware[LABWARE_SLOTS]
     }
     
     eppendorf_racks = {str(slot) : ctx.load_labware(
-        EPPENDORF_LABWARE[LABWARE_NAME], slot,
-        EPPENDORF_LABWARE[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot))
-        for slot in EPPENDORF_LABWARE[LABWARE_SLOTS]
+        eppendorf_labware[LABWARE_NAME], slot,
+        eppendorf_labware[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot))
+        for slot in eppendorf_labware[LABWARE_SLOTS]
     }
 
     tipracks1000 = [
         ctx.load_labware(
-            P1000_PIPETTE[TIP_RACK_LABWARE_NAME_KEY],slot, P1000_PIPETTE[TIP_RACK_LABEL_KEY] + f'_slot {str(index)}') 
-            for index, slot in enumerate(P1000_PIPETTE[TIP_RACK_SLOT_LIST_KEY])]
+            p1000_pipette[TIP_RACK_LABWARE_NAME_KEY],slot, p1000_pipette[TIP_RACK_LABEL_KEY] + f'_slot {str(index)}') 
+            for index, slot in enumerate(p1000_pipette[TIP_RACK_SLOT_LIST_KEY])]
 
     # load pipette
     p1000 = ctx.load_instrument(
-        P1000_PIPETTE[PIPETTE_LABWARE_NAME_KEY], P1000_PIPETTE[PIPETTE_POSITION_KEY], tip_racks=tipracks1000)
+        p1000_pipette[PIPETTE_LABWARE_NAME_KEY], p1000_pipette[PIPETTE_POSITION_KEY], tip_racks=tipracks1000)
 
     #Rates
     p1000.flow_rate.aspirate = P1000_FLOW_ASPIRATE
