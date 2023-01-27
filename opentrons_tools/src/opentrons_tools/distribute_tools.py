@@ -42,12 +42,16 @@ falcon_well_key = 'falcon_well', offset_key = 'offset'):
 def reorder_distribute_dict(distribute_dict, labware_dict, falcon_rack_slot = 'falcon_rack_slot',
     falcon_well = 'falcon_well', offset = 'offset', rack_slot_key='rack_tube_slot', tube_well_key = 'tube_well', 
     distribute_well_key = 'distribute_well', pk_sep = "-" , bottom_distance = 5):
-        
+    '''
+    Reorder the distribute dict according to PBS_dispensing scheme. Input must be output of distribute_vol_and_offsets
+    '''
     new_key_builder = [falcon_rack_slot, falcon_well, offset]
     reorder_dict = {} 
     for dict in distribute_dict.values():
         pklist = [str(dict[key]) for key in dict.keys() if key in new_key_builder]
+        #create pk
         pk = pk_sep.join(pklist)
+        #Create destiny orders
         order = labware_dict[dict[rack_slot_key]].wells()[dict[tube_well_key]].bottom(bottom_distance)
         if pk not in reorder_dict.keys():
             reorder_dict[pk] = {key: value for key, value in dict.items() if key in new_key_builder}
