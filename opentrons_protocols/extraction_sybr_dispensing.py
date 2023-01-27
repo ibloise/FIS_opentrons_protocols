@@ -88,9 +88,9 @@ def is_integer_num(n):
         return n.is_integer()
     return False
 
+
 def split_list(x, n):
     #Obtained from: https://stackoverflow.com/questions/9671224/split-a-python-list-into-other-sublists-i-e-smaller-lists
-
     return [x[idx:idx+n] for idx in range(0, len(x), n)]
 
 def src_dest_relation(lbw_1_settings, lbw_2_settings, lbw1_count_key, lbw_2_count_key, only_int = True):
@@ -160,10 +160,6 @@ def get_wells_pos(labware_dims, by_row = True):
             col_idx, row_idx = increase_idx(col_idx, row_idx, labware_dims[1])
     return wells_pos
 
-def split_list(x, n):
-    #Obtained from: https://stackoverflow.com/questions/9671224/split-a-python-list-into-other-sublists-i-e-smaller-lists
-    return [x[idx:idx+n] for idx in range(0, len(x), n)]
-
 def increase_idx(idx, second_idx, lap):
     idx += 1
     if idx >= lap:
@@ -198,7 +194,6 @@ def split_quadrants(big_labware_dims, labware_dim_relations, small_labware_slots
     col_list = [x for x in range(big_labware_dims[1])]
     rows = split_list(row_list, int(len(row_list)/labware_dim_relations[0]))
     cols = split_list(col_list, int(len(col_list)/labware_dim_relations[1]))
-
     for slot in small_labware_slots:
         destiny_dict[slot] = (rows[row_idx], cols[col_idx])
         if by_row:
@@ -232,7 +227,7 @@ def calc_wells_for_quadrant(tuple_quadrants, well_coords):
         wells_quadrants[key] = well_list
     return wells_quadrants
 
-def create_orders_quadrant(well_quad, dest_labw_slot, src_labware = "source", dest_labware = "dest", src_key = 'src', dest_key = 'dest', slot_key = 'slot', 
+def create_orders_quadrant(well_quad, dest_labw_slot, src_labware, dest_labware, src_key = 'src', dest_key = 'dest', slot_key = 'slot', 
 well_key = 'well',labware_key = 'labware'):
     '''
     Traduce los cuadrantes a orden de pipeteo para un algoritmo de transfer
@@ -244,30 +239,30 @@ well_key = 'well',labware_key = 'labware'):
             orders[well] = {
                 src_key:{
                 slot_key: key,
-                labware_key: src_labware,
+                labware_key: src_labware[key],
                 well_key: small_lbw_well}, 
             dest_key: {
                 slot_key: dest_labw_slot,
-                labware_key : dest_labware,
+                labware_key : dest_labware[dest_labw_slot[0]],
                 well_key : well
                 }
             }
             small_lbw_well += 1
     return orders
 
-def build_quadrants_orders(big_labware_dims, labware_relations, small_lbw_slots, big_lbw_slot, by_row = True):
+def build_quadrants_orders(big_labware_dims, labware_relations, small_lbw_slots, big_lbw_slot,
+    src_labware, dest_labware, by_row = True):
     #Queda añadirle la gestión de la dirección
     quadrants = split_quadrants(big_labware_dims, labware_relations, small_lbw_slots, by_row)
     tuple_quad = tuple_quadrants(quadrants)
     well_pos = get_wells_pos(big_labware_dims, by_row)
     well_quad = calc_wells_for_quadrant(tuple_quad, well_pos)
-    orders = create_orders_quadrant(well_quad, big_lbw_slot)
+    orders = create_orders_quadrant(well_quad, big_lbw_slot, src_labware, dest_labware)
     return orders
 
 
 #Protocol
 def run(ctx: protocol_api.ProtocolContext):
-    #ToDO: comprobar que todo cuadra
 
     # load labware
     source_racks = {str(slot) : ctx.load_labware(
@@ -290,25 +285,35 @@ def run(ctx: protocol_api.ProtocolContext):
     # load pipette
     p20 = ctx.load_instrument(
         p20_pipette[PIPETTE_LABWARE_NAME_KEY], p20_pipette[PIPETTE_POSITION_KEY], tip_racks=tipracks20)
+    
+    #****First step*****
+    # get orders
+    #dimensions
+    dest_key = 'extraction'
+    relation_key = 'relation'
+
+    dims = src_dest_dimensions(source_racks[source_labware_settings[LABWARE_SLOTS][0]], extraction_plate[extraction_labw_plate_settings[LABWARE_SLOTS][0]], 
+    dest_key=dest_key, rel_key = relation_key)
+    relations = [1/x for x in dims[relation_key]]
+
+    orders = build_quadrants_orders(dims[dest_key], relations,source_labware_settings[LABWARE_SLOTS], extraction_labw_plate_settings[LABWARE_SLOTS],
+    src_labware=source_racks, dest_labware=extraction_plate)
 
     #Rates
     #p20.flow_rate.aspirate = P1000_FLOW_ASPIRATE
     #p20.flow_rate.dispense = P100_FLOW_DISPENSE
     #p20.flow_rate.blow_out = P1000_FLOW_BLOWOUT
     
-    #get orders
+    #distribute eppendorf to extraction plate
 
-
-    #distribute
     p20.pick_up_tip()
 
     for order in orders.values():
-        source = source_racks[order[SRC_LBW_SLOT_KEY]].wells()[order[SRC_LBW_WELL_KEY]]
         p20.transfer(
-            volume = DISP_VOLUME_UL,
-            source = source.bottom(order[OFFSET_KEY]),
-            dest=order[DISTRIBUTE_WELL_KEY],
+            volume = 10,
+            source = order['src']['labware'].wells()[order['src']['well']],
+            dest=order['dest']['labware'].wells()[order['dest']['well']],
             disposal_volume=0,
             new_tip = 'never' 
         )
-    p1000.drop_tip()
+    p20.drop_tip()
