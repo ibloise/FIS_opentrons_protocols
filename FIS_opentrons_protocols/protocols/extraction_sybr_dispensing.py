@@ -270,10 +270,12 @@ def run(ctx: protocol_api.ProtocolContext):
         source_labware_settings[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot)) 
         for slot in source_labware_settings[LABWARE_SLOTS]
     }
+
+    temp_mod = ctx.load_module('temperature module', extraction_labw_plate_settings[LABWARE_SLOTS][0]) 
     
-    extraction_plate = {str(slot) : ctx.load_labware(
-    extraction_labw_plate_settings[LABWARE_NAME], slot,
-    extraction_labw_plate_settings[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot)) 
+    extraction_plate = {str(slot) : temp_mod.load_labware(
+    extraction_labw_plate_settings[LABWARE_NAME],
+    label = extraction_labw_plate_settings[LABWARE_LABEL] + SLOT_LABEL_SUFFIX + str(slot)) 
     for slot in extraction_labw_plate_settings[LABWARE_SLOTS]
     }
 
@@ -294,19 +296,23 @@ def run(ctx: protocol_api.ProtocolContext):
 
     dims = src_dest_dimensions(source_racks[source_labware_settings[LABWARE_SLOTS][0]], extraction_plate[extraction_labw_plate_settings[LABWARE_SLOTS][0]], 
     dest_key=dest_key, rel_key = relation_key)
+
+    #Invert relations
     relations = [1/x for x in dims[relation_key]]
 
     orders = build_quadrants_orders(dims[dest_key], relations,source_labware_settings[LABWARE_SLOTS], extraction_labw_plate_settings[LABWARE_SLOTS],
     src_labware=source_racks, dest_labware=extraction_plate)
 
     #Rates
-    #p20.flow_rate.aspirate = P1000_FLOW_ASPIRATE
-    #p20.flow_rate.dispense = P100_FLOW_DISPENSE
-    #p20.flow_rate.blow_out = P1000_FLOW_BLOWOUT
+    p20.flow_rate.aspirate = P20_ASP_RATE_FIRST_STEP
+    p20.flow_rate.dispense = P20_DISP_RATE_FIRST_STEP
+    p20.flow_rate.blow_out = P20_BLOW_RATE_FIRST_STEP
     
     #distribute eppendorf to extraction plate
 
-    p20.pick_up_tip()
+    #Sample control
+
+    orders = {idx : orders[idx] for idx in range(NUMBER_OF_SAMPLES) }
 
     for order in orders.values():
         p20.transfer(
@@ -314,6 +320,12 @@ def run(ctx: protocol_api.ProtocolContext):
             source = order['src']['labware'].wells()[order['src']['well']],
             dest=order['dest']['labware'].wells()[order['dest']['well']],
             disposal_volume=0,
-            new_tip = 'never' 
+            new_tip = 'always' 
         )
-    p20.drop_tip()
+    
+    temp_mod.set_temperature(celsius = 90)
+    temp_mod.status
+    ctx.delay(minutes=10)
+    temp_mod.set_temperature(celsius=25)
+    temp_mod.status
+    ctx.pause(msg= 'Protocolo en pausa') 
