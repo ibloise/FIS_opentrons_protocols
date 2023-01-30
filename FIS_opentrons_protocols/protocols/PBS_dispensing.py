@@ -11,6 +11,7 @@ metadata = {
     'apiLevel': '2.3',
     'author' : 'Iván Bloise-Sánchez'
 }
+
 VERSION = '1.0.0'
 
 #192 es el máximod e tubos que se pueden llenar con 8 racks de 24
