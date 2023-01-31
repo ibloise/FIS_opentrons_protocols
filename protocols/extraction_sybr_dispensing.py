@@ -1,3 +1,4 @@
+from math import ceil
 from opentrons import protocol_api
 from FIS_opentrons_tools.distribute_tools import *
 from FIS_opentrons_tools.constants import *
@@ -15,7 +16,7 @@ VERSION = '0.1.0'
 
 # samples
 
-NUMBER_OF_SAMPLES = 94
+NUMBER_OF_SAMPLES = 12
 
 #Variables del programa
 MAX_SAMPLES_NUMBER = 94
@@ -81,6 +82,8 @@ pcr_labw_plate_settings = {
 #calcs
 
 first_step_src_vol = calc_solution(FINAL_DILUTION_VOLUME, DILUTION_FACTOR, PRELOAD_VOLUME_UL)[0]
+last_col = ceil(NUMBER_OF_SAMPLES/8) #Ojo, que esto solo vale para labwares de 8 filas
+
 #Protocol
 def run(ctx: protocol_api.ProtocolContext):
 
@@ -175,15 +178,21 @@ def run(ctx: protocol_api.ProtocolContext):
     ctx.pause(msg= 'Protocolo en pausa')
 
     temp_mod.deactivate
-
     sec_pipette.flow_rate.aspirate = ASP_RATE_SECOND_STEP
     sec_pipette.flow_rate.dispense = DISP_RATE_SECOND_STEP
     sec_pipette.flow_rate.blow_out = BLOW_RATE_SECOND_STEP
 
+    if MULTI_PIPETTE:
+        src = extraction_plate['1'].columns()[:last_col]
+        dest = pcr_plate['2'].columns()[:last_col]
+    else:
+        src = extraction_plate['1'].wells()[:NUMBER_OF_SAMPLES]
+        dest = pcr_plate['2'].wells()[:NUMBER_OF_SAMPLES]
+    
     sec_pipette.transfer(
         volume = PCR_VOL_UL,
-        source=extraction_plate['1'].wells(),
-        dest = pcr_plate['2'].wells(),
+        source=src,
+        dest = dest,
         disposal_volume=0,
         new_tip = 'always'
     )
