@@ -16,20 +16,23 @@ VERSION = '0.1.0'
 # samples
 
 NUMBER_OF_SAMPLES = 94
-MULTI_PIPETTE = True
 
 #Variables del programa
 MAX_SAMPLES_NUMBER = 94
-PRELOAD_VOLUME_UL = 60
-DILUTION_COCIENT = 10
+PRELOAD_VOLUME_UL = 90
+FINAL_DILUTION_VOLUME = 100
+DILUTION_FACTOR = 10
 PCR_VOL_UL = 5
-P20_ASP_RATE_FIRST_STEP = 600
-P20_DISP_RATE_FIRST_STEP = 1000
-P20_BLOW_RATE_FIRST_STEP = 1000
-P20_ASP_RATE_SECOND_STEP = 600
-P20_DISP_RATE_SECOND_STEP = 1000
-P20_BLOW_RATE_SECOND_STEP = 1000
-
+ASP_RATE_FIRST_STEP = 600
+DISP_RATE_FIRST_STEP = 1000
+BLOW_RATE_FIRST_STEP = 1000
+ASP_RATE_SECOND_STEP = 600
+DISP_RATE_SECOND_STEP = 1000
+BLOW_RATE_SECOND_STEP = 1000
+EXTRACTION_TEMP = 90 #Temperatura de extracción
+EXTRACTION_TIME = 10
+POSTEXTRACTION_TEMP = 25 #TEMPERATURA DE ESPERA
+MULTI_PIPETTE = True
 
 #Labwares
 source_labware_settings = {
@@ -75,12 +78,6 @@ pcr_labw_plate_settings = {
     WELLS_COUNT : 96
 }
 
-def is_integer_num(n):
-    if isinstance(n, int):
-        return True
-    if isinstance(n, float):
-        return n.is_integer()
-    return False
 
 #Protocol
 def run(ctx: protocol_api.ProtocolContext):
@@ -148,9 +145,9 @@ def run(ctx: protocol_api.ProtocolContext):
     src_labware=source_racks, dest_labware=extraction_plate)
 
     #Rates
-    p20.flow_rate.aspirate = P20_ASP_RATE_FIRST_STEP
-    p20.flow_rate.dispense = P20_DISP_RATE_FIRST_STEP
-    p20.flow_rate.blow_out = P20_BLOW_RATE_FIRST_STEP
+    p20.flow_rate.aspirate = ASP_RATE_FIRST_STEP
+    p20.flow_rate.dispense = DISP_RATE_FIRST_STEP
+    p20.flow_rate.blow_out = BLOW_RATE_FIRST_STEP
     
     #distribute eppendorf to extraction plate
 
@@ -160,25 +157,29 @@ def run(ctx: protocol_api.ProtocolContext):
 
     for order in orders.values():
         p20.transfer(
-            volume = 10,
-            source = order['src']['labware'].wells()[order['src']['well']],
-            dest=order['dest']['labware'].wells()[order['dest']['well']],
+            volume = calc_solution(FINAL_DILUTION_VOLUME, DILUTION_FACTOR, PRELOAD_VOLUME_UL)[0],
+            source = order['src']['labware'].wells()[order['src']['well']].bottom(5),
+            dest=order['dest']['labware'].wells()[order['dest']['well']].bottom(5),
             disposal_volume=0,
             new_tip = 'always' 
         )
     
     #Extraction
-    temp_mod.set_temperature(celsius = 90)
+    temp_mod.set_temperature(celsius = EXTRACTION_TEMP)
     temp_mod.status
-    ctx.delay(minutes=10)
-    temp_mod.set_temperature(celsius=25)
+    ctx.delay(minutes=EXTRACTION_TIME)
+    temp_mod.set_temperature(celsius=POSTEXTRACTION_TEMP)
     temp_mod.status
     ctx.pause(msg= 'Protocolo en pausa')
 
     temp_mod.deactivate
 
+    sec_pipette.flow_rate.aspirate = ASP_RATE_SECOND_STEP
+    sec_pipette.flow_rate.dispense = DISP_RATE_SECOND_STEP
+    sec_pipette.flow_rate.blow_out = BLOW_RATE_SECOND_STEP
+
     sec_pipette.transfer(
-        volume = 5,
+        volume = PCR_VOL_UL,
         source=extraction_plate['1'].wells(),
         dest = pcr_plate['2'].wells(),
         disposal_volume=0,

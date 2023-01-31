@@ -1,3 +1,16 @@
+def calc_solution(final_vol, factor, preload_dil = 0):
+    dil = ((final_vol/factor)*factor-1)
+    sol = final_vol - dil
+    dil = dil - preload_dil
+    print("Giving back tuple of volumes: (solute , solvent)")
+    return (sol, dil)
+
+def is_integer_num(n):
+    if isinstance(n, int):
+        return True
+    if isinstance(n, float):
+        return n.is_integer()
+    return False
 
 def split_list(x, n):
     #Obtained from: https://stackoverflow.com/questions/9671224/split-a-python-list-into-other-sublists-i-e-smaller-lists
