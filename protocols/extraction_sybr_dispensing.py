@@ -46,7 +46,7 @@ source_labware_settings = {
 
 p20_pipette = {
     PIPETTE_LABWARE_NAME_KEY :'p20_single_gen2',
-    PIPETTE_POSITION_KEY : LEFT_POSITION,
+    PIPETTE_POSITION_KEY : RIGHT_POSITION,
     PIPETTE_LABEL_KEY : 'Opentrons P20 single gen2',
     TIP_RACK_LABWARE_NAME_KEY : 'opentrons_96_filtertiprack_20ul',
     TIP_RACK_SLOT_LIST_KEY : ['6'],
@@ -55,7 +55,7 @@ p20_pipette = {
 
 multip20_pipette = {    
     PIPETTE_LABWARE_NAME_KEY :'p20_multi_gen2',
-    PIPETTE_POSITION_KEY : RIGHT_POSITION,
+    PIPETTE_POSITION_KEY : LEFT_POSITION,
     PIPETTE_LABEL_KEY : 'Opentrons P20 multi gen2',
     TIP_RACK_LABWARE_NAME_KEY : 'opentrons_96_filtertiprack_20ul',
     TIP_RACK_SLOT_LIST_KEY : ['3'],
