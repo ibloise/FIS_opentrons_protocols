@@ -1,7 +1,6 @@
 def calc_solution(final_vol, factor, preload_dil = 0):
-    dil = ((final_vol/factor)*factor-1)
-    sol = final_vol - dil
-    dil = dil - preload_dil
+    sol = final_vol/factor
+    dil = final_vol - sol - preload_dil
     print("Giving back tuple of volumes: (solute , solvent)")
     return (sol, dil)
 

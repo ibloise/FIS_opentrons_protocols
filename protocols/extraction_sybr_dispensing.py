@@ -78,7 +78,9 @@ pcr_labw_plate_settings = {
     WELLS_COUNT : 96
 }
 
+#calcs
 
+first_step_src_vol = calc_solution(FINAL_DILUTION_VOLUME, DILUTION_FACTOR, PRELOAD_VOLUME_UL)[0]
 #Protocol
 def run(ctx: protocol_api.ProtocolContext):
 
@@ -157,7 +159,7 @@ def run(ctx: protocol_api.ProtocolContext):
 
     for order in orders.values():
         p20.transfer(
-            volume = calc_solution(FINAL_DILUTION_VOLUME, DILUTION_FACTOR, PRELOAD_VOLUME_UL)[0],
+            volume = first_step_src_vol,
             source = order['src']['labware'].wells()[order['src']['well']].bottom(5),
             dest=order['dest']['labware'].wells()[order['dest']['well']].bottom(5),
             disposal_volume=0,
