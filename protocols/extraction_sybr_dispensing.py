@@ -16,7 +16,7 @@ VERSION = '0.1.0'
 
 # samples
 
-NUMBER_OF_SAMPLES = 12
+NUMBER_OF_SAMPLES = 94
 
 #Variables del programa
 MAX_SAMPLES_NUMBER = 94
